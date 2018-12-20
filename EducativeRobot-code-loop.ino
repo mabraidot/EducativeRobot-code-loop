@@ -1,11 +1,24 @@
-// Micro: Attiny84
+/**
+Slave loop codeg block:
+-----------------------
+Micro: Attiny84
+*/
 
-int latchPin = A1;
-int clockPin = A2;
-int dataPin = A0;
+#include <EEPROM.h>
+#include <TinyWireS.h>
+
+
+#define SHIFT_LATCH_PIN   1
+#define SHIFT_CLOCK_PIN   2
+#define SHIFT_DATA_PIN    0
+#define ENCODER_SW_PIN    8
+#define ENCODER_A_PIN     9
+#define ENCODER_B_PIN     10
+
+
 byte number = 0;
-
-
+int encoder_count = 0;
+byte encoder_max = 99;
 /*
     F 
   A   G
@@ -38,31 +51,63 @@ const byte digit_pattern[17] =
 
 
 
+
+
 void setup() {
   
-  pinMode(latchPin, OUTPUT);
-  pinMode(dataPin, OUTPUT);  
-  pinMode(clockPin, OUTPUT);
+  pinMode(SHIFT_LATCH_PIN, OUTPUT);
+  pinMode(SHIFT_DATA_PIN, OUTPUT);  
+  pinMode(SHIFT_CLOCK_PIN, OUTPUT);
+
+  pinMode(ENCODER_A_PIN, INPUT);
+  pinMode(ENCODER_B_PIN, INPUT);
+
+  updateShiftRegister(0);
+
 }
 
 void loop() {
   
-  for(int i = 0; i < 100; i++){
-  
-    updateShiftRegister(i);
-    delay(300);
-  
+  if (readEncoder()){
+    updateShiftRegister(encoder_count);
   }
   
 }
 
 
+boolean readEncoder(){
+
+  boolean newEncode = false;
+  static boolean last_aState = 0;
+  
+  boolean aState = digitalRead(ENCODER_A_PIN);
+  boolean bState = digitalRead(ENCODER_B_PIN);
+
+  if (aState && aState != last_aState){
+    if (aState != bState){
+      encoder_count--;
+      if(encoder_count < 0){
+        encoder_count = encoder_max;
+      }
+    }else{
+      encoder_count++;
+      if(encoder_count > encoder_max){
+        encoder_count = 0;
+      }
+    }
+    newEncode = true;
+  }
+
+  last_aState = aState;
+
+  return newEncode;
+}
+
+
 /*
- * updateShiftRegister() - This function sets the latchPin to low, 
- * then calls the Arduino function 'shiftOut' to shift out contents 
- * of variable 'leds' in the shift register before putting the 'latchPin' high again.
+ * This function update the number in the 7-segment displays
  */
-void updateShiftRegister(byte number)
+void updateShiftRegister(int number)
 {
   uint8_t tens = 0;
   uint8_t ones = 0;
@@ -72,9 +117,9 @@ void updateShiftRegister(byte number)
     ones = number - (tens * 10);
   }
   
-  digitalWrite(latchPin, LOW);
-  shiftOut(dataPin, clockPin, LSBFIRST, digit_pattern[ones]);
-  shiftOut(dataPin, clockPin, LSBFIRST, digit_pattern[tens]);
+  digitalWrite(SHIFT_LATCH_PIN, LOW);
+  shiftOut(SHIFT_DATA_PIN, SHIFT_CLOCK_PIN, LSBFIRST, digit_pattern[ones]);
+  shiftOut(SHIFT_DATA_PIN, SHIFT_CLOCK_PIN, LSBFIRST, digit_pattern[tens]);
   
-  digitalWrite(latchPin, HIGH);
+  digitalWrite(SHIFT_LATCH_PIN, HIGH);
 }
