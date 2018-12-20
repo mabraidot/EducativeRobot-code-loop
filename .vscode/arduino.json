@@ -1,0 +1,6 @@
+{
+    "board": "ATTinyCore:avr:attinyx4",
+    "configuration": "LTO=disable,chip=84,clock=8internal,eesave=disable,bod=disable,pinmapping=anew",
+    "programmer": "USBasp",
+    "sketch": "EducativeRobot-code-loop.ino"
+}
