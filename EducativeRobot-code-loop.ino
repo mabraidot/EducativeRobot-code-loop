@@ -12,9 +12,9 @@ Micro: Attiny84
 #define SHIFT_CLOCK_PIN   2
 #define SHIFT_DATA_PIN    0
 #define ENCODER_SW_PIN    8
+#define ENCODER_SW_ACTION_PIN 7
 #define ENCODER_A_PIN     9
 #define ENCODER_B_PIN     10
-
 
 byte number = 0;
 int encoder_count = 0;
@@ -59,6 +59,8 @@ void setup() {
   pinMode(SHIFT_DATA_PIN, OUTPUT);  
   pinMode(SHIFT_CLOCK_PIN, OUTPUT);
 
+  pinMode(ENCODER_SW_PIN, INPUT_PULLUP);
+  pinMode(ENCODER_SW_ACTION_PIN, OUTPUT);
   pinMode(ENCODER_A_PIN, INPUT);
   pinMode(ENCODER_B_PIN, INPUT);
 
@@ -70,6 +72,9 @@ void loop() {
   
   if (readEncoder()){
     updateShiftRegister(encoder_count);
+  }
+  if (readEncoderButton()){
+    clickEncoder();
   }
   
 }
@@ -102,6 +107,24 @@ boolean readEncoder(){
 
   return newEncode;
 }
+
+boolean readEncoderButton(){
+  boolean newEncode = false;
+  boolean state = digitalRead(ENCODER_SW_PIN);
+  if (!state){
+    newEncode = true;
+  } 
+  return newEncode;
+}
+
+void clickEncoder(){
+  // Code to execut on encoder click
+  // @TODO: Do the debouncing!!!
+  
+  digitalWrite(ENCODER_SW_ACTION_PIN, !digitalRead(ENCODER_SW_ACTION_PIN));
+
+}
+
 
 
 /*
