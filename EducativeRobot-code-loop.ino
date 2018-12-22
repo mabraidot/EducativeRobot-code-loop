@@ -19,6 +19,10 @@ Micro: Attiny84
 byte number = 0;
 int encoder_count = 0;
 byte encoder_max = 99;
+unsigned long lastDebounceTime = 0;  // the last time the output pin was toggled
+unsigned long debounceDelay = 50;    // the debounce time; increase if the output flickers
+int lastButtonState = LOW;           // the previous reading from the input pin
+int buttonState;                     // the current reading from the input pin
 /*
     F 
   A   G
@@ -109,18 +113,31 @@ boolean readEncoder(){
 }
 
 boolean readEncoderButton(){
+  
   boolean newEncode = false;
   boolean state = digitalRead(ENCODER_SW_PIN);
-  if (!state){
-    newEncode = true;
-  } 
+
+  if (state != lastButtonState) {
+    // reset the debouncing timer
+    lastDebounceTime = millis();
+  }
+  if ((millis() - lastDebounceTime) > debounceDelay) {
+    if (state != buttonState) {
+      buttonState = state;
+
+      /*if (buttonState == HIGH) {
+        //Turn on something
+      }*/
+      newEncode = true;
+    }
+  }
+  lastButtonState = state;
+
   return newEncode;
 }
 
 void clickEncoder(){
   // Code to execut on encoder click
-  // @TODO: Do the debouncing!!!
-  
   digitalWrite(ENCODER_SW_ACTION_PIN, !digitalRead(ENCODER_SW_ACTION_PIN));
 
 }
