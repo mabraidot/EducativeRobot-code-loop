@@ -19,10 +19,15 @@ Micro: Attiny84
 byte number = 0;
 int encoder_count = 0;
 byte encoder_max = 99;
-unsigned long lastDebounceTime = 0;  // the last time the output pin was toggled
-unsigned long debounceDelay = 50;    // the debounce time; increase if the output flickers
-int lastButtonState = LOW;           // the previous reading from the input pin
-int buttonState;                     // the current reading from the input pin
+
+// Encoder Switch Debouncing (Kenneth A. Kuhn algorithm)
+#define DEBOUNCE_TIME               0.3
+#define DEBOUNCE_SAMPLE_FREQUENCY   10
+#define DEBOUNCE_MAXIMUM            (DEBOUNCE_TIME * DEBOUNCE_SAMPLE_FREQUENCY)
+boolean buttonInput = true;        /* 0 or 1 depending on the input signal */
+unsigned int buttonIntegrator;      /* Will range from 0 to the specified MAXIMUM */
+boolean buttonOutput = true;       /* Cleaned-up version of the input signal */
+
 /*
     F 
   A   G
@@ -87,7 +92,7 @@ void loop() {
 boolean readEncoder(){
 
   boolean newEncode = false;
-  static boolean last_aState = 0;
+  static boolean last_aState = true;
   
   boolean aState = digitalRead(ENCODER_A_PIN);
   boolean bState = digitalRead(ENCODER_B_PIN);
@@ -114,26 +119,35 @@ boolean readEncoder(){
 
 boolean readEncoderButton(){
   
-  boolean newEncode = false;
-  boolean state = digitalRead(ENCODER_SW_PIN);
+  boolean newPushButton = false;
 
-  if (state != lastButtonState) {
-    // reset the debouncing timer
-    lastDebounceTime = millis();
-  }
-  if ((millis() - lastDebounceTime) > debounceDelay) {
-    if (state != buttonState) {
-      buttonState = state;
-
-      /*if (buttonState == HIGH) {
-        //Turn on something
-      }*/
-      newEncode = true;
+  /* Step 1: Update the integrator based on the input signal.  Note that the
+  integrator follows the input, decreasing or increasing towards the limits as
+  determined by the input state (0 or 1). */
+  buttonInput = digitalRead(ENCODER_SW_PIN);
+  if (buttonInput == false){
+    if (buttonIntegrator > 0){
+      buttonIntegrator--;
     }
+  }else if (buttonIntegrator < DEBOUNCE_MAXIMUM){
+    buttonIntegrator++;
   }
-  lastButtonState = state;
+  /* Step 2: Update the output state based on the integrator.  Note that the
+  output will only change states if the integrator has reached a limit, either
+  0 or DEBOUNCE_MAXIMUM. */
+  if (buttonIntegrator == 0){
+    buttonOutput = false;
+  }else if (buttonIntegrator >= DEBOUNCE_MAXIMUM){
+    if(buttonInput != buttonOutput){
+      newPushButton = true;
+    }
+    buttonOutput = true;
+    buttonIntegrator = DEBOUNCE_MAXIMUM;  /* defensive code if integrator got corrupted */
+  }
+  //digitalWrite(ENCODER_SW_ACTION_PIN, output);
 
-  return newEncode;
+  return newPushButton;
+  
 }
 
 void clickEncoder(){
