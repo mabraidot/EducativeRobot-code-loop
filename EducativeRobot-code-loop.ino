@@ -7,15 +7,22 @@ Micro: Attiny84
 #include <EEPROM.h>
 #include <TinyWireS.h>
 
-#define LED_PIN 3
-#define GATE_PIN 5
-
 // The default buffer size
 #ifndef TWI_RX_BUFFER_SIZE
   #define TWI_RX_BUFFER_SIZE ( 16 )
 #endif
 
 byte i2c_slave_address = 0x02;
+
+#define LED_PIN                 3
+#define GATE_PIN                5
+#define SHIFT_DATA_PIN          0
+#define SHIFT_LATCH_PIN         1
+#define SHIFT_CLOCK_PIN         2
+#define ENCODER_SW_ACTION_PIN   7
+#define ENCODER_SW_PIN          8
+#define ENCODER_A_PIN           9
+#define ENCODER_B_PIN           10
 
 volatile uint8_t i2c_regs[] =
 {
@@ -28,16 +35,6 @@ const byte reg_size = sizeof(i2c_regs);
 
 // Needed for software reset
 void(* resetFunc) (void) = 0;
-
-
-
-#define SHIFT_DATA_PIN          0
-#define SHIFT_LATCH_PIN         1
-#define SHIFT_CLOCK_PIN         2
-#define ENCODER_SW_ACTION_PIN   7
-#define ENCODER_SW_PIN          8
-#define ENCODER_A_PIN           9
-#define ENCODER_B_PIN           10
 
 byte number = 0;
 int encoder_count = 0;
