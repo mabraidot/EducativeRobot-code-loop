@@ -16,6 +16,7 @@ byte i2c_slave_address = 0x02;
 
 #define LED_PIN                 3
 #define GATE_PIN                5
+#define RESET_PIN               7
 #define SHIFT_DATA_PIN          0
 #define SHIFT_LATCH_PIN         1
 #define SHIFT_CLOCK_PIN         2
@@ -28,10 +29,12 @@ volatile uint8_t i2c_regs[] =
 {
     0,        // Set new I2C address
     0,        // Activate to any child slave
-    0         // Flash the LED
+    0,        // Flash the LED
+    0         // Activated block
 };
 volatile byte reg_position = 0;
 const byte reg_size = sizeof(i2c_regs);
+boolean activated = false;
 
 // Needed for software reset
 void(* resetFunc) (void) = 0;
@@ -79,9 +82,6 @@ const byte digit_pattern[17] =
   B11001100,  // F
   B00000001   // .
 };
-
-
-
 
 
 // Slave address is stored at EEPROM address 0x00
@@ -140,12 +140,14 @@ void receiveEvent(uint8_t howMany)
 // Gets called when the ATtiny receives an i2c request
 void requestEvent()
 {
-  TinyWireS.send(i2c_regs[reg_position]);
-  // Increment the reg position on each read, and loop back to zero
-  reg_position++;
-  if (reg_position >= reg_size)
-  {
-    reg_position = 0;
+  if(activated){
+    TinyWireS.send(i2c_regs[reg_position]);
+    // Increment the reg position on each read, and loop back to zero
+    reg_position++;
+    if (reg_position >= reg_size)
+    {
+      reg_position = 0;
+    }
   }
 }
 
@@ -153,6 +155,7 @@ void requestEvent()
 
 void setup() {
 
+  pinMode(RESET_PIN, INPUT);            // Soft RESET
   pinMode(LED_PIN, OUTPUT);             // Status LED
   pinMode(GATE_PIN, OUTPUT);            // Status GATE for child slave
 
@@ -190,13 +193,14 @@ void loop() {
   if (readEncoderButton()){
     clickEncoder();
   }
-  
+
+  readReset();
 }
 
 
 void blink_led()
 {
-  if(i2c_regs[2])
+  if(activated && i2c_regs[2])
   {
     static byte led_on = 1;
     static int blink_interval = 500;
@@ -216,34 +220,37 @@ void blink_led()
   else
   {
     digitalWrite(LED_PIN, LOW);
+    i2c_regs[2] = 0;
   }
 
 }
 
 void activate_child()
 {
-  if(i2c_regs[1])
+  if(activated && i2c_regs[1])
   {
     digitalWrite(GATE_PIN, HIGH);
   }
   else
   {
     digitalWrite(GATE_PIN, LOW);
+    i2c_regs[1] = 0;
   }
 }
 
 
 void set_new_address()
 {
-  if(i2c_regs[0])
+  if(activated && i2c_regs[0])
   {
     //write EEPROM and reset
     EEPROM.write(0x00, i2c_regs[0]);
     i2c_regs[0] = 0;
     resetFunc();  
+  }else{
+    i2c_regs[0] = 0;
   }
 }
-
 
 boolean readEncoder(){
 
@@ -333,4 +340,23 @@ void updateShiftRegister(int number)
   shiftOut(SHIFT_DATA_PIN, SHIFT_CLOCK_PIN, LSBFIRST, digit_pattern[tens]);
   
   digitalWrite(SHIFT_LATCH_PIN, HIGH);
+}
+
+
+void readReset(){
+  static const unsigned int REFRESH_INTERVAL = 200; // ms 
+  static unsigned long lastRefreshTime = 0;
+  if(millis() - lastRefreshTime >= REFRESH_INTERVAL){
+    lastRefreshTime = millis();
+    //if (analogRead(RESET_PIN) > 1000 ) {  // reset pin is near Vcc
+    if(!digitalRead(RESET_PIN)){
+      if(activated){      // If it is soft resetting for the first time, reset it for real
+        resetFunc();
+      }
+      i2c_regs[1] = 0;                    // disable slave
+      activated = false;  // Set itself as an inactive block
+    } else {                              // reset pin is less than 1000/1024 * 5 vcc
+      activated = true;   // Set itself as an active block
+    }
+  }
 }
