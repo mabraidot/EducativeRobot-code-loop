@@ -34,7 +34,6 @@ volatile uint8_t i2c_regs[] =
 };
 volatile byte reg_position = 0;
 const byte reg_size = sizeof(i2c_regs);
-boolean activated = false;
 
 // Needed for software reset
 void(* resetFunc) (void) = 0;
@@ -140,7 +139,7 @@ void receiveEvent(uint8_t howMany)
 // Gets called when the ATtiny receives an i2c request
 void requestEvent()
 {
-  if(activated){
+  if(i2c_regs[3]){
     TinyWireS.send(i2c_regs[reg_position]);
     // Increment the reg position on each read, and loop back to zero
     reg_position++;
@@ -200,7 +199,7 @@ void loop() {
 
 void blink_led()
 {
-  if(activated && i2c_regs[2])
+  if(i2c_regs[3] && i2c_regs[2])
   {
     static byte led_on = 1;
     static int blink_interval = 500;
@@ -227,7 +226,7 @@ void blink_led()
 
 void activate_child()
 {
-  if(activated && i2c_regs[1])
+  if(i2c_regs[3] && i2c_regs[1])
   {
     digitalWrite(GATE_PIN, HIGH);
   }
@@ -241,7 +240,7 @@ void activate_child()
 
 void set_new_address()
 {
-  if(activated && i2c_regs[0])
+  if(i2c_regs[3] && i2c_regs[0])
   {
     //write EEPROM and reset
     EEPROM.write(0x00, i2c_regs[0]);
@@ -350,13 +349,13 @@ void readReset(){
     lastRefreshTime = millis();
     //if (analogRead(RESET_PIN) > 1000 ) {  // reset pin is near Vcc
     if(!digitalRead(RESET_PIN)){
-      if(activated){      // If it is soft resetting for the first time, reset it for real
+      if(i2c_regs[3]){      // If it is soft resetting for the first time, reset it for real
         resetFunc();
       }
       i2c_regs[1] = 0;                    // disable slave
-      activated = false;  // Set itself as an inactive block
+      i2c_regs[3] = 0;   // Set itself as an inactive block
     } else {                              // reset pin is less than 1000/1024 * 5 vcc
-      activated = true;   // Set itself as an active block
+      i2c_regs[3] = 1;   // Set itself as an active block
     }
   }
 }
