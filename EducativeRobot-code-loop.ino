@@ -12,7 +12,8 @@ Micro: Attiny84
   #define TWI_RX_BUFFER_SIZE ( 16 )
 #endif
 
-byte i2c_slave_address = 0x02;
+byte i2c_slave_address  = 0x02;
+byte slave_function     = 1; // MODIFIER_LOOP
 
 #define LED_PIN                 3
 #define GATE_PIN                5
@@ -27,10 +28,12 @@ byte i2c_slave_address = 0x02;
 
 volatile uint8_t i2c_regs[] =
 {
-    0,        // Set new I2C address
-    0,        // Activate to any child slave
-    0,        // Flash the LED
-    0         // Activated block
+    0,              // Set new I2C address
+    0,              // Activate to any child slave
+    0,              // Flash the LED
+    0,              // Activated block
+    slave_function, // Slave function
+    0               // Slave modifying value
 };
 volatile byte reg_position = 0;
 const byte reg_size = sizeof(i2c_regs);
@@ -38,7 +41,6 @@ const byte reg_size = sizeof(i2c_regs);
 // Needed for software reset
 void(* resetFunc) (void) = 0;
 
-byte number = 0;
 int encoder_count = 0;
 byte encoder_max = 99;
 
@@ -171,8 +173,9 @@ void setup() {
   pinMode(ENCODER_A_PIN, INPUT);
   pinMode(ENCODER_B_PIN, INPUT);
 
-  updateShiftRegister(0);
-
+  i2c_regs[5] = EEPROM.read(0x01);
+  updateShiftRegister(i2c_regs[5]);
+  
 }
 
 void loop() {
@@ -183,7 +186,7 @@ void loop() {
   ////////////////////////////////////
 
   set_new_address();
-  blink_led();
+  led();
   activate_child();
 
   if (readEncoder()){
@@ -197,24 +200,26 @@ void loop() {
 }
 
 
-void blink_led()
+void led()
 {
-  if(i2c_regs[3] && i2c_regs[2])
+  if(i2c_regs[3])
   {
-    static byte led_on = 1;
-    static int blink_interval = 500;
-    static unsigned long blink_timeout = millis() + blink_interval;
-    
-    if(blink_timeout < millis()){
-      led_on = !led_on;
-      blink_timeout = millis() + blink_interval;
-      if(!led_on)
-      {
-        i2c_regs[2]--;
+    // Blink
+    if(i2c_regs[2] == 2){
+      static byte led_on = 1;
+      static int blink_interval = 500;
+      static unsigned long blink_timeout = millis() + blink_interval;
+      
+      if(blink_timeout < millis()){
+        led_on = !led_on;
+        blink_timeout = millis() + blink_interval;
       }
+      digitalWrite(LED_PIN, led_on);
+    }else if(i2c_regs[2] == 1){
+      digitalWrite(LED_PIN, 1);
+    }else{
+      digitalWrite(LED_PIN, 0);
     }
-    digitalWrite(LED_PIN, led_on);
-    
   }
   else
   {
@@ -223,6 +228,8 @@ void blink_led()
   }
 
 }
+
+
 
 void activate_child()
 {
@@ -245,6 +252,7 @@ void set_new_address()
     //write EEPROM and reset
     EEPROM.write(0x00, i2c_regs[0]);
     i2c_regs[0] = 0;
+    EEPROM.write(0x01, i2c_regs[5]);
     resetFunc();  
   }else{
     i2c_regs[0] = 0;
@@ -324,14 +332,15 @@ void clickEncoder(){
 /*
  * This function update the number in the 7-segment displays
  */
-void updateShiftRegister(int number)
+void updateShiftRegister(int count)
 {
   uint8_t tens = 0;
   uint8_t ones = 0;
 
-  if(number > 0){
-    tens = floor(number/10);
-    ones = number - (tens * 10);
+  i2c_regs[5] = count;
+  if(i2c_regs[5] > 0){
+    tens = floor(i2c_regs[5]/10);
+    ones = i2c_regs[5] - (tens * 10);
   }
   
   digitalWrite(SHIFT_LATCH_PIN, LOW);
@@ -350,6 +359,7 @@ void readReset(){
     //if (analogRead(RESET_PIN) > 1000 ) {  // reset pin is near Vcc
     if(!digitalRead(RESET_PIN)){
       if(i2c_regs[3]){      // If it is soft resetting for the first time, reset it for real
+        EEPROM.write(0x01, i2c_regs[5]);
         resetFunc();
       }
       i2c_regs[1] = 0;                    // disable slave
