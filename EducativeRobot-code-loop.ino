@@ -13,7 +13,7 @@ Micro: Attiny84
 #endif
 
 byte i2c_slave_address  = 0x02;
-byte slave_function     = 1; // MODIFIER_LOOP
+byte slave_function     = 1; // MODE_MODIFIER_LOOP
 
 #define LED_PIN                 3
 #define GATE_PIN                5
@@ -51,7 +51,7 @@ byte encoder_max = 99;
 boolean buttonInput = true;        /* 0 or 1 depending on the input signal */
 unsigned int buttonIntegrator;      /* Will range from 0 to the specified MAXIMUM */
 boolean buttonOutput = true;       /* Cleaned-up version of the input signal */
-
+byte displayNumber = 0;
 
 
 /*
@@ -173,8 +173,8 @@ void setup() {
   pinMode(ENCODER_A_PIN, INPUT);
   pinMode(ENCODER_B_PIN, INPUT);
 
-  i2c_regs[5] = EEPROM.read(0x01);
-  updateShiftRegister(i2c_regs[5]);
+  displayNumber = i2c_regs[5] = EEPROM.read(0x01);
+  updateShiftRegister(i2c_regs[5], true);
   
 }
 
@@ -190,12 +190,12 @@ void loop() {
   activate_child();
 
   if (readEncoder()){
-    updateShiftRegister(encoder_count);
+    updateShiftRegister(encoder_count, true);
   }
   if (readEncoderButton()){
     clickEncoder();
   }
-
+  set_display_number();
   readReset();
 }
 
@@ -252,7 +252,9 @@ void set_new_address()
     //write EEPROM and reset
     EEPROM.write(0x00, i2c_regs[0]);
     i2c_regs[0] = 0;
-    EEPROM.write(0x01, i2c_regs[5]);
+    //EEPROM.write(0x01, i2c_regs[5]);
+    EEPROM.write(0x01, displayNumber);
+    
     resetFunc();  
   }else{
     i2c_regs[0] = 0;
@@ -332,12 +334,15 @@ void clickEncoder(){
 /*
  * This function update the number in the 7-segment displays
  */
-void updateShiftRegister(int count)
+void updateShiftRegister(int count, boolean update_reg)
 {
   uint8_t tens = 0;
   uint8_t ones = 0;
 
   i2c_regs[5] = count;
+  if(update_reg){
+    displayNumber = i2c_regs[5];
+  }
   if(i2c_regs[5] > 0){
     tens = floor(i2c_regs[5]/10);
     ones = i2c_regs[5] - (tens * 10);
@@ -359,7 +364,9 @@ void readReset(){
     //if (analogRead(RESET_PIN) > 1000 ) {  // reset pin is near Vcc
     if(!digitalRead(RESET_PIN)){
       if(i2c_regs[3]){      // If it is soft resetting for the first time, reset it for real
-        EEPROM.write(0x01, i2c_regs[5]);
+        //EEPROM.write(0x01, i2c_regs[5]);
+        EEPROM.write(0x01, displayNumber);
+        
         resetFunc();
       }
       i2c_regs[1] = 0;                    // disable slave
@@ -368,4 +375,13 @@ void readReset(){
       i2c_regs[3] = 1;   // Set itself as an active block
     }
   }
+}
+
+
+void set_display_number(void){
+
+  if(i2c_regs[5] != displayNumber){
+    updateShiftRegister(i2c_regs[5], false);
+  }
+
 }
