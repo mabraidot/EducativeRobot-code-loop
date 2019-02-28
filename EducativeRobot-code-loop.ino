@@ -13,7 +13,16 @@ Micro: Attiny84
 #endif
 
 byte i2c_slave_address  = 0x02;
-byte slave_function     = 1; // MODE_MODIFIER_LOOP
+/*
+Slave function modes
+
+MODE_MODIFIER_LOOP          1
+MODE_SLAVE_FORWARD_ARROW    2
+MODE_SLAVE_LEFT_ARROW       2
+MODE_SLAVE_RIGHT_ARROW      3
+MODE_FUNCTION               4
+*/
+byte slave_function     = 1;
 
 #define LED_PIN                 3
 #define GATE_PIN                5
@@ -365,16 +374,13 @@ void updateShiftRegister(int count, boolean update_reg)
 
 
 void readReset(){
-  static const unsigned int REFRESH_INTERVAL = 200; // ms 
+  static const unsigned int REFRESH_INTERVAL = 100; // ms 
   static unsigned long lastRefreshTime = 0;
   if(millis() - lastRefreshTime >= REFRESH_INTERVAL){
     lastRefreshTime = millis();
-    //if (analogRead(RESET_PIN) > 1000 ) {  // reset pin is near Vcc
     if(!digitalRead(RESET_PIN)){
       if(i2c_regs[3]){      // If it is soft resetting for the first time, reset it for real
-        //EEPROM.write(0x01, i2c_regs[5]);
         EEPROM.write(0x01, displayNumber);
-        
         resetFunc();
       }
       i2c_regs[1] = 0;                    // disable slave
