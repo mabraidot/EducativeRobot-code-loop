@@ -117,6 +117,9 @@ void receiveEvent(uint8_t howMany)
   }
 
   reg_position = TinyWireS.receive();
+  if(reg_position == 255){
+    clear_eeprom();
+  }
   howMany--;
   if (!howMany)
   {
@@ -137,6 +140,11 @@ void receiveEvent(uint8_t howMany)
   }
 }
 
+
+void clear_eeprom(void){
+  EEPROM.write(0x00, 0);
+  EEPROM.write(0x01, 0);
+}
 
 // Gets called when the ATtiny receives an i2c request
 void requestEvent()
@@ -380,8 +388,6 @@ void readReset(){
 
 void set_display_number(void){
 
-  if(i2c_regs[5] != displayNumber){
-    updateShiftRegister(i2c_regs[5], false);
-  }
-
+  updateShiftRegister(i2c_regs[5], false);
+  
 }
