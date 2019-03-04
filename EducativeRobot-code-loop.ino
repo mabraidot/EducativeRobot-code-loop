@@ -94,14 +94,83 @@ const byte digit_pattern[17] =
 };
 
 
+void clear_eeprom(void){
+  //EEPROM.write(0x00, 0);
+  //EEPROM.write(0x01, 0);
+  for(int i = 0; i < EEPROM.length(); i++){
+    EEPROM.write(i, 0);
+  }
+}
+
+
+/*
+Rotate function to wear out the eeprom records evenly
+*/
+void write_eeprom(byte cell, byte value){
+  /*
+  values    |0|1|x|x|0|0|0|
+  records   |0|1|2|3|4|5|6|
+  */
+  int addr = 0;
+  for(int i=0; i < EEPROM.length(); i++){
+    if(EEPROM.read(i) > 0){
+      addr = i;
+      break;
+    }
+  }
+  if(addr+2 >= EEPROM.length()){  // End of EEPROM, move to the begining
+    if(cell == 0){
+      EEPROM.write(0x02, EEPROM.read(addr+2));
+      EEPROM.write(0x01, value);
+    }else{ // cell = 1
+      EEPROM.write(0x01, EEPROM.read(addr+1));
+      EEPROM.write(0x02, value);
+    }
+    EEPROM.write(0x00, 1);
+    EEPROM.write(addr+2, 0);
+    EEPROM.write(addr+1, 0);
+  }else{  // Not end of EEPROM, so move to the next  set of addresses
+    if(cell == 0){
+      EEPROM.write(addr+3, EEPROM.read(addr+2));
+      EEPROM.write(addr+2, value);
+    }else{ // cell = 1
+      EEPROM.write(addr+2, EEPROM.read(addr+1));
+      EEPROM.write(addr+3, value);
+    }
+    EEPROM.write(addr+1, 1);
+  }
+  EEPROM.write(addr, 0);
+
+}
+
+
+byte read_eeprom(byte cell){
+  /*
+  values    |0|0|1|x|x|0|0|
+  records   |0|1|2|3|4|5|6|
+  */
+  int addr = 0;
+  for(int i=0; i < EEPROM.length(); i++){
+    if(EEPROM.read(i) > 0){
+      addr = i;
+      break;
+    }
+  }
+  return EEPROM.read(addr+1+cell);
+
+}
+
+
 // Slave address is stored at EEPROM address 0x00
 byte getAddress() {
-  byte i2c_new_address = EEPROM.read(0x00);
+  //byte i2c_new_address = EEPROM.read(0x00);
+  byte i2c_new_address = read_eeprom(0);
   if (i2c_new_address == 0x00) { 
     i2c_new_address = i2c_slave_address; 
   }else if(i2c_new_address != i2c_slave_address){
     // Write back the original placeholder address, in case of an unplug
-    EEPROM.write(0x00, i2c_slave_address);
+    //EEPROM.write(0x00, i2c_slave_address);
+    write_eeprom(0, i2c_slave_address);
     activate_child();
   }
 
@@ -150,11 +219,6 @@ void receiveEvent(uint8_t howMany)
 }
 
 
-void clear_eeprom(void){
-  EEPROM.write(0x00, 0);
-  EEPROM.write(0x01, 0);
-}
-
 // Gets called when the ATtiny receives an i2c request
 void requestEvent()
 {
@@ -190,7 +254,8 @@ void setup() {
   pinMode(ENCODER_A_PIN, INPUT);
   pinMode(ENCODER_B_PIN, INPUT);
 
-  encoder_count = displayNumber = i2c_regs[5] = EEPROM.read(0x01);
+  //encoder_count = displayNumber = i2c_regs[5] = EEPROM.read(0x01);
+  encoder_count = displayNumber = i2c_regs[5] = read_eeprom(1);
   updateShiftRegister(i2c_regs[5], true);
   
 }
@@ -267,9 +332,11 @@ void set_new_address()
   if(i2c_regs[3] && i2c_regs[0])
   {
     //write EEPROM and reset
-    EEPROM.write(0x00, i2c_regs[0]);
+    //EEPROM.write(0x00, i2c_regs[0]);
+    write_eeprom(0, i2c_regs[0]);
     i2c_regs[0] = 0;
-    EEPROM.write(0x01, displayNumber);
+    //EEPROM.write(0x01, displayNumber);
+    write_eeprom(1, displayNumber);
     
     resetFunc();  
   }else{
@@ -379,7 +446,8 @@ void readReset(){
     lastRefreshTime = millis();
     if(!digitalRead(RESET_PIN)){
       if(i2c_regs[3]){      // If it is soft resetting for the first time, reset it for real
-        EEPROM.write(0x01, displayNumber);
+        //EEPROM.write(0x01, displayNumber);
+        write_eeprom(1, displayNumber);
         resetFunc();
       }
       i2c_regs[1] = 0;                    // disable slave
