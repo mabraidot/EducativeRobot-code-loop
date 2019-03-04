@@ -190,7 +190,7 @@ void setup() {
   pinMode(ENCODER_A_PIN, INPUT);
   pinMode(ENCODER_B_PIN, INPUT);
 
-  displayNumber = i2c_regs[5] = EEPROM.read(0x01);
+  encoder_count = displayNumber = i2c_regs[5] = EEPROM.read(0x01);
   updateShiftRegister(i2c_regs[5], true);
   
 }
@@ -269,7 +269,6 @@ void set_new_address()
     //write EEPROM and reset
     EEPROM.write(0x00, i2c_regs[0]);
     i2c_regs[0] = 0;
-    //EEPROM.write(0x01, i2c_regs[5]);
     EEPROM.write(0x01, displayNumber);
     
     resetFunc();  
