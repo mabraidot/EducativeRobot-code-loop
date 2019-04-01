@@ -16,13 +16,16 @@ byte i2c_slave_address  = 0x09;
 /*
 Slave function modes
 
-MODE_MODIFIER_LOOP          1
-MODE_SLAVE_FORWARD_ARROW    2
-MODE_SLAVE_LEFT_ARROW       2
-MODE_SLAVE_RIGHT_ARROW      3
-MODE_FUNCTION               4
+MODE_FUNCTION               1
+MODE_MODIFIER_LOOP          2
+MODE_SLAVE_FORWARD_ARROW    3
+MODE_SLAVE_BACKWARD_ARROW   4
+MODE_SLAVE_LEFT_ARROW       5
+MODE_SLAVE_RIGHT_ARROW      6
+MODE_SLAVE_LIGHT            7
+MODE_SLAVE_SOUND            8
 */
-byte slave_function     = 1;
+byte slave_function     = 2;
 
 #define LED_PIN                 3
 #define GATE_PIN                5
