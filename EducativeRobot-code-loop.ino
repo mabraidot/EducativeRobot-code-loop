@@ -4,6 +4,7 @@ Slave loop codeg block:
 Micro: Attiny84
 */
 
+#include <Arduino.h>
 #include <EEPROM.h>
 #include <TinyWireS.h>
 

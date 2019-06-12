@@ -3,11 +3,10 @@
         {
             "name": "Win32",
             "includePath": [
-                "C:\\Users\\mabra\\AppData\\Local\\Arduino15\\packages\\ATTinyCore\\hardware\\avr\\1.2.2\\**",
                 "C:\\Users\\mabra\\AppData\\Local\\Arduino15\\packages\\arduino\\tools\\**",
                 "C:\\Users\\mabra\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.6.22\\**",
-                "C:\\Users\\mabra\\AppData\\Local\\Arduino15\\packages\\attiny\\hardware\\avr\\1.0.2\\**",
-                "C:\\Users\\mabra\\AppData\\Local\\Arduino15\\packages\\ATTinyCore\\hardware\\avr\\1.2.3\\**"
+                "C:\\Users\\mabra\\AppData\\Local\\Arduino15\\packages\\ATTinyCore\\hardware\\avr\\1.2.3\\**",
+                "C:\\Users\\mabra\\Documents\\Arduino\\libraries\\**"
             ],
             "forcedInclude": [],
             "intelliSenseMode": "msvc-x64",
